@@ -5,71 +5,48 @@
 
 /* ===
 ml5 Example
-PoseNet example using p5.js
+Sound classification using pre-trained custom SpeechCommands18w and p5.js
+This example uses a callback pattern to create the classifier
 === */
 
-let video;
-let poseNet;
-let poses = [];
+const modelJson = 'https://storage.googleapis.com/tm-speech-commands/eye-test-sound-yining/model.json';
+// Two variable to hold the label and confidence of the result
+let label;
+let confidence;
+// Initialize a sound classifier method.
+let classifier;
+
+function preload() {
+  // Load the pre-trianed custom SpeechCommands18w sound classifier model
+  classifier = ml5.soundClassifier(modelJson);
+}
 
 function setup() {
-  createCanvas(640, 480);
-  video = createCapture(VIDEO);
-  video.size(width, height);
+  noCanvas();
+  // ml5 also supports using callback pattern to create the classifier
+  // classifier = ml5.soundClassifier(modelJson, modelReady);
 
-  // Create a new poseNet method with a single detection
-  poseNet = ml5.poseNet(video, modelReady);
-  // This sets up an event that fills the global variable "poses"
-  // with an array every time new poses are detected
-  poseNet.on('pose', function(results) {
-    poses = results;
-  });
-  // Hide the video element, and just show the canvas
-  video.hide();
+  // Create 'label' and 'confidence' div to hold results
+  label = createDiv('Label: ...');
+  confidence = createDiv('Confidence: ...');
+  // Classify the sound from microphone in real time
+  classifier.classify(gotResult);
 }
 
-function modelReady() {
-  select('#status').html('Model Loaded');
-}
+// If you use callback pattern to create the classifier, you can use the following callback function
+// function modelReady() {
+//   classifier.classify(gotResult);
+// }
 
-function draw() {
-  image(video, 0, 0, width, height);
-
-  // We can call both functions to draw all keypoints and the skeletons
-  drawKeypoints();
-  drawSkeleton();
-}
-
-// A function to draw ellipses over the detected keypoints
-function drawKeypoints()  {
-  // Loop through all the poses detected
-  for (let i = 0; i < poses.length; i++) {
-    // For each pose detected, loop through all the keypoints
-    let pose = poses[i].pose;
-    for (let j = 0; j < pose.keypoints.length; j++) {
-      // A keypoint is an object describing a body part (like rightArm or leftShoulder)
-      let keypoint = pose.keypoints[j];
-      // Only draw an ellipse is the pose probability is bigger than 0.2
-      if (keypoint.score > 0.2) {
-        fill(255, 0, 0);
-        noStroke();
-        ellipse(keypoint.position.x, keypoint.position.y, 10, 10);
-      }
-    }
+// A function to run when we get any errors and the results
+function gotResult(error, results) {
+  // Display error in the console
+  if (error) {
+    console.error(error);
   }
-}
-
-// A function to draw the skeletons
-function drawSkeleton() {
-  // Loop through all the skeletons detected
-  for (let i = 0; i < poses.length; i++) {
-    let skeleton = poses[i].skeleton;
-    // For every skeleton, loop through all body connections
-    for (let j = 0; j < skeleton.length; j++) {
-      let partA = skeleton[j][0];
-      let partB = skeleton[j][1];
-      stroke(255, 0, 0);
-      line(partA.position.x, partA.position.y, partB.position.x, partB.position.y);
-    }
-  }
+  // The results are in an array ordered by confidence.
+  console.log(results);
+  // Show the first label and confidence
+  label.html('Label: ' + results[0].label);
+  confidence.html('Confidence: ' + nf(results[0].confidence, 0, 2)); // Round the confidence to 0.01
 }
